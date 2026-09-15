@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · Hair Density</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<style>
+:root{
+  --bg:#f0f5fb;--card:#fff;--surface2:#e8f2fb;--text:#1e293b;--muted:#64748b;
+  --border:#ccddf0;--pos:#10b981;--neg:#ef4444;--gap:16px;--r:12px;
+  --shadow:0 1px 4px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.04);
+  --ig:#e1306c;--ads:#f59e0b;--acc:#6c3ee8;--live:#0ea5e9;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+
+/* HEADER */
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 1px 4px rgba(14,165,233,.06)}
+.header h1{font-size:18px;font-weight:800;color:var(--text)}
+.header-sub{color:var(--muted);font-size:12px;margin-top:2px}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.updated-badge{font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.dot-live{width:6px;height:6px;background:var(--live);border-radius:50%;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-refresh,.btn-pdf{border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;padding:6px 14px;border:1px solid var(--border);background:var(--surface2);color:var(--text)}
+.btn-refresh:hover{border-color:var(--live);color:var(--live)}
+.btn-pdf:hover{border-color:#f87171;color:#f87171}
+.ps-logo{text-align:center;padding:4px 0 4px 14px;border-left:1px solid var(--border);margin-left:6px}
+.ps-logo-mark{font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-1px}
+.ps-amp{font-style:italic;font-size:20px}
+.ps-logo-sub{font-size:6.5px;letter-spacing:2.2px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-top:4px;white-space:nowrap;border-top:1.5px solid var(--text);padding-top:4px}
+
+/* FILTER BAR */
+.filter-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.filter-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.month-pills{display:flex;gap:5px;flex-wrap:wrap}
+.month-pill{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.15s;user-select:none}
+.month-pill:hover{border-color:var(--live);color:var(--live)}
+.month-pill.on{background:var(--live);border-color:var(--live);color:#fff}
+.month-pill.no-data{opacity:.35}
+.filter-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.preset-btns{display:flex;gap:5px;flex-wrap:wrap}
+.preset-btn{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.15s;white-space:nowrap}
+.preset-btn:hover{border-color:var(--text);color:var(--text)}
+
+/* TABS */
+.tabs{display:flex;gap:4px;padding:14px 28px 0;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto}
+.tab{padding:9px 18px;cursor:pointer;border-radius:var(--r) var(--r) 0 0;font-size:13px;font-weight:600;color:var(--muted);border:1px solid transparent;border-bottom:none;transition:.2s;white-space:nowrap;background:none}
+.tab:hover{color:var(--text);background:var(--surface2)}
+.tab.active{color:var(--text);background:var(--bg);border-color:var(--border);border-bottom-color:var(--bg);position:relative;top:1px}
+.tab.active[data-t=instagram]{color:var(--ig)}
+.tab.active[data-t=meta]{color:var(--ads)}
+.tab.active[data-t=resumen]{color:var(--live)}
+
+/* CONTENT */
+.main{max-width:1380px;margin:0 auto;padding:24px 28px 48px}
+.panel{display:none}
+.panel.active{display:block}
+
+/* PERIOD BADGE */
+.pbadge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:20px;background:rgba(14,165,233,.1);color:var(--live);border:1px solid rgba(14,165,233,.2)}
+.pbadge.ig{background:rgba(225,48,108,.1);color:var(--ig);border-color:rgba(225,48,108,.2)}
+.pbadge.ads{background:rgba(245,158,11,.12);color:#b45309;border-color:rgba(245,158,11,.25)}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:var(--gap);margin-bottom:24px}
+.kpi{background:var(--card);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);border-top:3px solid var(--border)}
+.kpi.ig{border-top-color:var(--ig)}.kpi.ads{border-top-color:var(--ads)}.kpi.acc{border-top-color:var(--acc)}.kpi.live{border-top-color:var(--live)}
+.kpi-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.kpi-val{font-size:24px;font-weight:800;color:var(--text);line-height:1.1}
+.kpi-prev{font-size:11px;color:var(--muted);margin-top:3px}
+.kpi-chg{font-size:12px;font-weight:600;margin-top:4px}
+.kpi-chg.up{color:var(--pos)}.kpi-chg.down{color:var(--neg)}.kpi-chg.neu{color:var(--muted)}
+
+/* SECTION HEADER */
+.sec{margin:28px 0 14px;display:flex;align-items:center;gap:10px}
+.sec-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);white-space:nowrap}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+.r-divider{margin:32px 0;border:none;border-top:2px solid var(--border);border-radius:2px}
+
+/* GRIDS */
+.g1{display:grid;grid-template-columns:1fr;gap:var(--gap);margin-bottom:var(--gap)}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap);margin-bottom:var(--gap)}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-bottom:var(--gap)}
+
+/* CHART CARD */
+.cc{background:var(--card);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow)}
+.cc-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.cc-sub{font-size:11px;color:var(--muted);margin-bottom:14px}
+
+.no-prev{display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);font-weight:500;gap:8px;height:100%}
+
+/* AUTO INSIGHT */
+.auto-insight{background:linear-gradient(135deg,rgba(14,165,233,.06),rgba(108,62,232,.04));border-radius:var(--r);padding:20px 24px;box-shadow:var(--shadow);border-left:4px solid var(--live)}
+.block-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px}
+.block-text{font-size:13px;color:var(--text);line-height:1.85;white-space:pre-line}
+
+/* DOWNLOAD PER PANEL */
+.pg-dl-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.pg-dl-row .pbadge{margin-bottom:0}
+.pg-dl-btn{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);transition:all .15s;box-shadow:var(--shadow);white-space:nowrap}
+.pg-dl-btn:hover{border-color:var(--live);color:var(--live)}
+
+/* LOADING OVERLAY */
+.loading-overlay{position:fixed;inset:0;background:rgba(240,245,251,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:16px}
+.loading-overlay.hidden{display:none}
+.loader{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--live);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{100%{transform:rotate(360deg)}}
+.loading-text{color:var(--muted);font-size:14px}
+
+body.print-all .panel{display:block!important;position:relative}
+body.print-all .panel+.panel{margin-top:0}
+
+@media(max-width:900px){.g2,.g3{grid-template-columns:1fr}.header,.filter-bar,.tabs{padding-left:14px;padding-right:14px}.main{padding:16px}}
+@media print{
+  .filter-bar,.tabs,.pg-dl-btn,.header-right{display:none!important}
+  .panel{display:none!important}
+  .panel.active{display:block!important}
+  .cc{break-inside:avoid}
+  .r-divider{break-after:avoid}
+  body{background:#fff!important}
+  .main{padding:16px}
+  body.print-all .panel{display:block!important}
+  body.print-all .panel+.panel{break-before:page;margin-top:0}
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loader"></div>
+  <div class="loading-text">Cargando datos del sheet…</div>
+</div>
+
+<header class="header">
+  <div>
+    <h1 id="hdr-title">HAIR DENSITY — Dashboard Marketing 2026</h1>
+    <div class="header-sub" id="hdr-sub">Estadísticas por canal</div>
+  </div>
+  <div class="header-right">
+    <span class="updated-badge" id="last-upd"><span class="dot-live"></span> Cargando…</span>
+    <button class="btn-refresh" onclick="doRefresh()">🔄 Actualizar</button>
+    <button class="btn-pdf" onclick="doPrintAll()">⬇ Descargar PDF</button>
+    <div class="ps-logo">
+      <div class="ps-logo-mark">P<span class="ps-amp">&amp;</span>S</div>
+      <div class="ps-logo-sub">Marketing y Creatividad</div>
+    </div>
+  </div>
+</header>
+
+<div class="filter-bar">
+  <span class="filter-label">Período:</span>
+  <div class="month-pills" id="month-pills"></div>
+  <div class="filter-sep"></div>
+  <div class="preset-btns">
+    <button class="preset-btn" onclick="setPreset('T1')">T1</button>
+    <button class="preset-btn" onclick="setPreset('T2')">T2</button>
+    <button class="preset-btn" onclick="setPreset('T3')">T3</button>
+    <button class="preset-btn" onclick="setPreset('T4')">T4</button>
+    <button class="preset-btn" onclick="setPreset('H1')">H1</button>
+    <button class="preset-btn" onclick="setPreset('H2')">H2</button>
+    <button class="preset-btn" onclick="setPreset('Todo')">Todo</button>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button class="tab active" data-t="resumen"   onclick="setTab('resumen')">📊 Resumen</button>
+  <button class="tab"        data-t="instagram" onclick="setTab('instagram')">📱 Instagram</button>
+  <button class="tab"        data-t="meta"      onclick="setTab('meta')">💰 Meta Ads</button>
+</nav>
+
+<main class="main">
+  <div id="p-resumen"   class="panel active"></div>
+  <div id="p-instagram" class="panel"></div>
+  <div id="p-meta"      class="panel"></div>
+</main>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────
+const MO = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const N12 = ()=>Array(12).fill(null);
+const PAISES = ['Chile','Uruguay','Argentina'];
+
+function newCampData(){
+  return {alc:N12(),imp:N12(),res:N12(),cpa:N12(),ctr:N12(),cpm:N12(),inv:N12()};
+}
+
+const D = {
+  meta:{
+    resumen:{ invTotalMeta:N12(), invTotal:N12(), alcTotal:N12(), impTotal:N12(), mensajesTotal:N12() },
+    mes:{ videoConsultas:N12(), cirugiasAgendadas:N12(), cirugiasRealizadas:N12() },
+    objetivos:{
+      'Tráfico IG':     { Chile:newCampData(), Uruguay:newCampData(), Argentina:newCampData() },
+      'Mensajes MOFU':  { Chile:newCampData(), Uruguay:newCampData(), Argentina:newCampData() },
+      'Mensajes BOFU':  { Chile:newCampData(), Uruguay:newCampData(), Argentina:newCampData() },
+    },
+  },
+  ig:{
+    segInicio:N12(), segFinal:N12(), nuevosSeg:N12(), varSeg:N12(),
+    alcanceOrg:N12(), impresiones:N12(), frecuencia:N12(),
+    posts:N12(), guardados:N12(), compartidos:N12(), reproVideo:N12(), postDestacado:Array(12).fill(''),
+    likes:N12(), comentarios:N12(), engRate:N12(),
+    clicsWeb:N12(), visitasPerfil:N12(),
+    intReels:N12(), intFoto:N12(), intStory:N12(),
+  },
+};
+
+// ── STATE ────────────────────────────────────────────────────────────────
+let SEL=[7];    // mes activo por defecto (se recalcula tras cargar el sheet)
+let TAB='resumen';
+const CHS={};
+
+// ── MONTH HELPERS ────────────────────────────────────────────────────────
+const lastM  = ()=> SEL[SEL.length-1];
+const prevM  = ()=> lastM()>0 ? lastM()-1 : null;
+const selLbls= ()=> SEL.map(i=>MO[i]);
+
+// ── FORMAT HELPERS ───────────────────────────────────────────────────────
+const fN =(n,d=0)=> n==null||isNaN(n)?'—':n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fK =(n)=>{ if(n==null||isNaN(n))return'—'; const a=Math.abs(n); return a>=1e6?(n/1e6).toFixed(1)+'M':a>=1e3?(n/1e3).toFixed(1)+'K':fN(n); };
+const f$ =(n)=> n==null?'—':'$'+fN(n,2);
+const pct=(a,b)=>(!b||b===0)?null:((a-b)/b)*100;
+
+// ── KPI CARD ─────────────────────────────────────────────────────────────
+function kpi(label,data,fmt='k',cls='',color=null){
+  const m=lastM(), p=prevM();
+  const v=data[m], pv=p!==null?data[p]:null;
+  const style=color?`style="border-top-color:${color}"`:'';
+  if(v===null||v===undefined) return `<div class="kpi ${cls}" ${style}><div class="kpi-label">${label}</div><div class="kpi-val">—</div><div class="kpi-chg neu">Sin datos</div></div>`;
+  const fFn=fmt==='money'?f$:fmt==='pct'?(n=>n==null?'—':fN(n,1)+'%'):fmt==='x'?(n=>n==null?'—':fN(n,1)+'x'):fK;
+  const chg=(pv!=null)?pct(v,pv):null;
+  const chgHtml=chg!==null?`<div class="kpi-chg ${chg>=0?'up':'down'}">${chg>=0?'▲':'▼'} ${chg>=0?'+':''}${chg.toFixed(1)}% vs ${MO[p]}</div>`:`<div class="kpi-chg neu">${pv==null?'Sin dato anterior':'Primer mes'}</div>`;
+  const prevHtml=pv!=null?`<div class="kpi-prev">${MO[p]}: ${fFn(pv)}</div>`:'';
+  return `<div class="kpi ${cls}" ${style}><div class="kpi-label">${label}</div><div class="kpi-val">${fFn(v)}</div>${prevHtml}${chgHtml}</div>`;
+}
+
+// ── LAYOUT HELPERS ───────────────────────────────────────────────────────
+const sec=(t)=>`<div class="sec"><span class="sec-title">${t}</span></div>`;
+const cc=(id,title,sub,h=230)=>`<div class="cc"><div class="cc-title">${title}</div><div class="cc-sub">${sub}</div><div style="position:relative;height:${h}px"><canvas id="${id}"></canvas></div></div>`;
+const slug=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-');
+
+// ── CHART ENGINE ─────────────────────────────────────────────────────────
+const C={ig:'#e1306c',igL:'rgba(225,48,108,.15)',ads:'#f59e0b',adsL:'rgba(245,158,11,.15)',
+  live:'#0ea5e9',acc:'#6c3ee8',prev:'rgba(160,160,160,.3)',prevB:'rgba(160,160,160,.65)',
+  pal:['#6c3ee8','#0ea5e9','#f59e0b','#e1306c','#10b981','#4285f4']};
+
+function mk(id,cfg){
+  if(CHS[id]){try{CHS[id].destroy()}catch(e){}delete CHS[id];}
+  const el=document.getElementById(id); if(!el)return;
+  CHS[id]=new Chart(el.getContext('2d'),cfg);
+}
+function destroyAll(){Object.values(CHS).forEach(c=>{try{c.destroy()}catch(e){}});Object.keys(CHS).forEach(k=>delete CHS[k]);}
+
+function showNP(id){
+  const el=document.getElementById(id); if(!el)return;
+  el.parentElement.innerHTML=`<div class="no-prev">📅 Seleccioná al menos 2 meses para ver la comparativa</div>`;
+}
+
+function gBar(id,datasets,fmtCb){
+  const labels=selLbls();
+  mk(id,{type:'bar',
+    data:{labels,datasets:datasets.map(ds=>({
+      label:ds.label,data:SEL.map(i=>ds.data[i]??null),
+      backgroundColor:ds.color+'BB',borderColor:ds.color,borderWidth:1.5,borderRadius:5,
+    }))},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:14,font:{size:11}}},
+        tooltip:{callbacks:{label(ctx){return ` ${ctx.dataset.label}: ${fmtCb?fmtCb(ctx.parsed.y):fK(ctx.parsed.y)}`;} }}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:12}}},
+        y:{beginAtZero:true,ticks:{callback:v=>fmtCb?fmtCb(v):fK(v),font:{size:11}}}}}});
+}
+
+function trend(id,datasets){
+  mk(id,{type:'line',data:{labels:MO,datasets:datasets.map(ds=>({
+    label:ds.label,data:ds.data,borderColor:ds.color,backgroundColor:ds.colorL||(ds.color+'20'),
+    borderWidth:2.5,tension:.35,fill:ds.fill||false,pointRadius:5,pointHoverRadius:8,spanGaps:true,
+  }))},options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:14,font:{size:11}}},
+      tooltip:{callbacks:{label(ctx){return ` ${ctx.dataset.label}: ${fK(ctx.parsed.y)}`;} }}},
+    scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>fK(v),font:{size:11}}}}}});
+}
+
+function donut(id,labels,data,colors){
+  mk(id,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors||C.pal,borderColor:'#fff',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'right',labels:{usePointStyle:true,padding:12,font:{size:11}}},
+        tooltip:{callbacks:{label(ctx){const tot=ctx.dataset.data.reduce((a,b)=>a+b,0)||1;
+          return ` ${ctx.label}: ${fK(ctx.parsed)} (${((ctx.parsed/tot)*100).toFixed(1)}%)`;}}}}}});
+}
+
+function hBar(id,labels,data,fmtCb){
+  mk(id,{type:'bar',data:{labels,datasets:[{label:'',data,backgroundColor:labels.map((_,i)=>C.pal[i%C.pal.length]),borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label(ctx){return ` ${fmtCb(ctx.parsed.x)}`;} }}},
+      scales:{x:{beginAtZero:true,ticks:{callback:fmtCb,font:{size:11}}},y:{grid:{display:false},ticks:{font:{size:12}}}}}});
+}
+
+// ── PRINT ────────────────────────────────────────────────────────────────
+function doPrint(){
+  const names={resumen:'Resumen',instagram:'Instagram',meta:'Meta Ads'};
+  document.title=`Hair Density · ${names[TAB]||TAB} · ${selLbls().join('-')}`;
+  window.print();
+  document.title='Dashboard · Hair Density';
+}
+async function doPrintAll(){
+  const TABS=['resumen','instagram','meta'];
+  document.body.classList.add('print-all');
+  destroyAll();
+  TABS.forEach(t=>RENDERS[t]());
+  await new Promise(r=>setTimeout(r,600));
+  document.title=`Hair Density · Dashboard completo · ${selLbls().join('-')}`;
+  window.print();
+  document.body.classList.remove('print-all');
+  document.title='Dashboard · Hair Density';
+  destroyAll();
+  RENDERS[TAB]();
+}
+
+// ── AUTO INSIGHTS ────────────────────────────────────────────────────────
+function chg(curr,prev){ if(curr==null||prev==null||prev===0)return null; return (curr-prev)/prev*100; }
+function chgLine(lbl,curr,prev,fmtFn,p){
+  const c=chg(curr,prev); if(c===null||curr==null)return null;
+  return `${c>=0?'▲':'▼'} ${lbl}: ${fmtFn(curr)} (${c>=0?'+':''}${c.toFixed(1)}% vs ${MO[p]})`;
+}
+
+function genAutoInsights(tab){
+  const m=lastM(), p=prevM();
+  const lines=[];
+
+  if(tab==='resumen'){
+    if(D.meta.resumen.invTotal[m]!=null) lines.push(`💰 Inversión Meta Ads: ${f$(D.meta.resumen.invTotal[m])}`);
+    if(D.meta.resumen.alcTotal[m]!=null) lines.push(`📣 Alcance Meta Ads: ${fK(D.meta.resumen.alcTotal[m])} personas`);
+    if(D.ig.segFinal[m]!=null) lines.push(`📱 Instagram cerró ${MO[m]} con ${fN(D.ig.segFinal[m],0)} seguidores.`);
+    if(D.meta.mes.cirugiasRealizadas[m]!=null) lines.push(`🏥 Cirugías realizadas: ${fN(D.meta.mes.cirugiasRealizadas[m],0)}`);
+    if(D.meta.mes.cirugiasAgendadas[m]!=null) lines.push(`📅 Cirugías agendadas: ${fN(D.meta.mes.cirugiasAgendadas[m],0)}`);
+    if(p!==null){
+      [chgLine('Inversión Meta Ads',D.meta.resumen.invTotal[m],D.meta.resumen.invTotal[p],f$,p),
+       chgLine('Seguidores IG',D.ig.segFinal[m],D.ig.segFinal[p],v=>fN(v,0),p)]
+        .filter(Boolean).forEach(l=>lines.push(l));
+    }
+  }
+
+  else if(tab==='instagram'){
+    if(p!==null){
+      [chgLine('Alcance orgánico',D.ig.alcanceOrg[m],D.ig.alcanceOrg[p],fK,p),
+       chgLine('Nuevos seguidores',D.ig.nuevosSeg[m],D.ig.nuevosSeg[p],v=>fN(v,0),p),
+       chgLine('Engagement rate',D.ig.engRate[m],D.ig.engRate[p],v=>fN(v,2)+'%',p)]
+        .filter(Boolean).forEach(l=>lines.push(l));
+    } else {
+      if(D.ig.alcanceOrg[m]!=null) lines.push(`📡 Alcance orgánico: ${fK(D.ig.alcanceOrg[m])}`);
+      if(D.ig.nuevosSeg[m]!=null)  lines.push(`👥 Nuevos seguidores: ${fN(D.ig.nuevosSeg[m],0)}`);
+    }
+    if(D.ig.postDestacado[m]) lines.push(`🏆 Post destacado: "${D.ig.postDestacado[m]}"`);
+    const fmts=[{lbl:'Reels',d:D.ig.intReels[m]},{lbl:'Foto',d:D.ig.intFoto[m]},{lbl:'Story',d:D.ig.intStory[m]}].filter(f=>f.d!=null&&f.d>0);
+    if(fmts.length>0){ const best=fmts.reduce((a,b)=>b.d>a.d?b:a); lines.push(`🎞️ Formato top: ${best.lbl} (${fK(best.d)} interacciones)`); }
+  }
+
+  else if(tab==='meta'){
+    if(D.meta.resumen.invTotal[m]!=null) lines.push(`💰 Inversión total Meta Ads: ${f$(D.meta.resumen.invTotal[m])}`);
+    Object.entries(D.meta.objetivos).forEach(([key,obj])=>{
+      const active=PAISES.filter(c=>obj[c].inv[m]!=null&&obj[c].inv[m]>0);
+      if(active.length===0)return;
+      const best=active.reduce((a,b)=>(obj[a].cpa[m]??Infinity)<(obj[b].cpa[m]??Infinity)?a:b);
+      if(obj[best].cpa[m]!=null) lines.push(`🏆 ${key}: mejor CPA en ${best} (${f$(obj[best].cpa[m])})`);
+    });
+  }
+
+  return lines.length>0 ? lines.join('\n') : 'Cargá los datos del mes para ver el análisis automático.';
+}
+
+function autoBlock(tab,color){
+  const insight=genAutoInsights(tab);
+  const period=selLbls().join(', ');
+  return `
+  ${sec('🤖 Análisis automático · '+period)}
+  <div class="g1">
+    <div class="auto-insight" style="border-left-color:${color||'#0ea5e9'}">
+      <div class="block-label" style="color:${color||'#0ea5e9'}">📊 Resumen del período</div>
+      <div class="block-text">${insight}</div>
+    </div>
+  </div>`;
+}
+
+// ── TAB: RESUMEN ─────────────────────────────────────────────────────────
+function rResumen(){
+  const m=lastM(), p=prevM();
+  const invTotal = D.meta.resumen.invTotal.some(v=>v!=null) ? D.meta.resumen.invTotal : D.meta.resumen.invTotalMeta;
+
+  document.getElementById('p-resumen').innerHTML=`
+    <div class="pg-dl-row">
+      <div class="pbadge">📊 ${MO[m]}${p!==null?' · vs '+MO[p]:' · primer mes con datos'}</div>
+      <button class="pg-dl-btn" onclick="doPrint()">📥 Descargar Resumen</button>
+    </div>
+
+    ${sec('💰 Resumen Meta Ads')}
+    <div class="kpi-grid">
+      ${kpi('Inversión total',invTotal,'money','ads')}
+      ${kpi('Alcance total',D.meta.resumen.alcTotal,'k','ads')}
+      ${kpi('Impresiones totales',D.meta.resumen.impTotal,'k','ads')}
+      ${kpi('Mensajes totales',D.meta.resumen.mensajesTotal,'k','ads')}
+    </div>
+    <div class="g2" style="margin-top:8px">
+      ${cc('r-inv-trend','Inversión total Meta Ads','Meses seleccionados',240)}
+      ${cc('r-alc-trend','Alcance total Meta Ads','Meses seleccionados',240)}
+    </div>
+
+    <hr class="r-divider">
+
+    ${sec('📱 Comunidad Instagram')}
+    <div class="kpi-grid">
+      ${kpi('Seguidores (fin de mes)',D.ig.segFinal,'k','ig')}
+      ${kpi('Nuevos seguidores',D.ig.nuevosSeg,'k','ig')}
+      ${kpi('Alcance orgánico',D.ig.alcanceOrg,'k','ig')}
+      ${kpi('Engagement rate',D.ig.engRate,'pct','ig')}
+    </div>
+    <div class="g1" style="margin-top:8px">
+      ${cc('r-ig-trend','Seguidores vs Alcance orgánico','Meses seleccionados',240)}
+    </div>
+
+    <hr class="r-divider">
+
+    ${sec('🏥 Resultados del negocio')}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+      ${kpi('Video consultas agendadas',D.meta.mes.videoConsultas,'k','acc')}
+      ${kpi('Cirugías agendadas',D.meta.mes.cirugiasAgendadas,'k','acc')}
+      ${kpi('Cirugías realizadas',D.meta.mes.cirugiasRealizadas,'k','acc')}
+    </div>
+
+    ${autoBlock('resumen',C.live)}`;
+
+  gBar('r-inv-trend',[{label:'Inversión ($)',data:invTotal,color:C.ads}],v=>'$'+fK(v));
+  gBar('r-alc-trend',[{label:'Alcance',data:D.meta.resumen.alcTotal,color:C.ads}]);
+  trend('r-ig-trend',[
+    {label:'Seguidores',data:D.ig.segFinal,color:C.ig,colorL:C.igL},
+    {label:'Alcance orgánico',data:D.ig.alcanceOrg,color:'#f472b6',colorL:'#f472b620'},
+  ]);
+}
+
+// ── TAB: INSTAGRAM ───────────────────────────────────────────────────────
+function rInstagram(){
+  const m=lastM(), p=prevM();
+  const postDest=D.ig.postDestacado[m];
+  const postDestHtml=postDest?`
+    <div class="cc" style="margin-top:8px">
+      <div class="cc-title">🏆 Post destacado del mes</div>
+      <div style="padding:6px 4px 0;font-size:13px;line-height:1.6">${postDest}</div>
+    </div>`:'';
+
+  document.getElementById('p-instagram').innerHTML=`
+    <div class="pg-dl-row">
+      <div class="pbadge ig">📱 ${MO[m]}${p!==null?' · vs '+MO[p]:' · primer mes con datos'}</div>
+      <button class="pg-dl-btn" onclick="doPrint()">📥 Descargar Instagram</button>
+    </div>
+
+    ${sec('👥 Audiencia — Crecimiento de comunidad')}
+    <div class="kpi-grid">
+      ${kpi('Seguidores al inicio',D.ig.segInicio,'k','ig')}
+      ${kpi('Seguidores al final',D.ig.segFinal,'k','ig')}
+      ${kpi('Nuevos seguidores',D.ig.nuevosSeg,'k','ig')}
+      ${kpi('Variación %',D.ig.varSeg,'pct','ig')}
+    </div>
+    <div class="g1" style="margin-top:8px">${cc('ig-seg-trend','Seguidores al final de mes','Meses seleccionados',230)}</div>
+
+    ${sec('📡 Alcance y visibilidad')}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      ${kpi('Alcance orgánico',D.ig.alcanceOrg,'k','ig')}
+      ${kpi('Impresiones',D.ig.impresiones,'k','ig')}
+      ${kpi('Frecuencia',D.ig.frecuencia,'x','ig')}
+    </div>
+    <div class="g1" style="margin-top:8px">${cc('ig-alc-imp','Alcance orgánico vs Impresiones','Meses seleccionados',230)}</div>
+
+    ${sec('🎬 Contenido técnico')}
+    <div class="kpi-grid">
+      ${kpi('Posts publicados',D.ig.posts,'k','ig')}
+      ${kpi('Guardados',D.ig.guardados,'k','ig')}
+      ${kpi('Compartidos',D.ig.compartidos,'k','ig')}
+      ${kpi('Reproducciones de video',D.ig.reproVideo,'k','ig')}
+    </div>
+    <div class="g1" style="margin-top:8px">${cc('ig-cont-bar','Guardados, compartidos y reproducciones','Meses seleccionados',230)}</div>
+    ${postDestHtml}
+
+    ${sec('🤝 Engagement y confianza')}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      ${kpi('Likes totales',D.ig.likes,'k','ig')}
+      ${kpi('Comentarios totales',D.ig.comentarios,'k','ig')}
+      ${kpi('Engagement rate',D.ig.engRate,'pct','ig')}
+    </div>
+    <div class="g1" style="margin-top:8px">${cc('ig-eng-trend','Likes y comentarios','Meses seleccionados',230)}</div>
+
+    ${sec('🌐 Tráfico al sitio web')}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      ${kpi('Clics al sitio web',D.ig.clicsWeb,'k','ig')}
+      ${kpi('Visitas al perfil',D.ig.visitasPerfil,'k','ig')}
+    </div>
+    <div class="g1" style="margin-top:8px">${cc('ig-web-trend','Clics al sitio vs Visitas al perfil','Meses seleccionados',230)}</div>
+
+    ${sec('🎞️ Evaluación por formatos')}
+    <div class="g1">${cc('ig-fmt-donut','Interacciones por formato','Reels, Foto y Story · '+MO[m],260)}</div>
+
+    ${autoBlock('instagram',C.ig)}`;
+
+  gBar('ig-seg-trend',[{label:'Seguidores',data:D.ig.segFinal,color:C.ig}]);
+  gBar('ig-alc-imp',[{label:'Alcance orgánico',data:D.ig.alcanceOrg,color:C.ig},{label:'Impresiones',data:D.ig.impresiones,color:'#f472b6'}]);
+  gBar('ig-cont-bar',[{label:'Guardados',data:D.ig.guardados,color:C.ig},{label:'Compartidos',data:D.ig.compartidos,color:'#f472b6'},{label:'Reproducciones',data:D.ig.reproVideo,color:'#fbcfe8'}]);
+  gBar('ig-eng-trend',[{label:'Likes',data:D.ig.likes,color:C.ig},{label:'Comentarios',data:D.ig.comentarios,color:'#f472b6'}]);
+  gBar('ig-web-trend',[{label:'Clics al sitio',data:D.ig.clicsWeb,color:C.ig},{label:'Visitas al perfil',data:D.ig.visitasPerfil,color:'#f472b6'}]);
+  donut('ig-fmt-donut',['Reels','Foto','Story'],[D.ig.intReels[m]||0,D.ig.intFoto[m]||0,D.ig.intStory[m]||0],[C.ig,'#f472b6','#fbcfe8']);
+}
+
+// ── TAB: META ADS ────────────────────────────────────────────────────────
+function sumCountries(obj,field){
+  return MO.map((_,i)=>{
+    const vals=PAISES.map(c=>obj[c][field][i]).filter(v=>v!=null);
+    return vals.length?vals.reduce((a,b)=>a+b,0):null;
+  });
+}
+
+function rMeta(){
+  const m=lastM(), p=prevM();
+  const OBJETIVOS_UI=[
+    {key:'Tráfico IG',    label:'1 · Tráfico IG',    col:'#6c3ee8', icon:'🚗'},
+    {key:'Mensajes MOFU', label:'2 · Mensajes MOFU', col:C.ads,     icon:'💬'},
+    {key:'Mensajes BOFU', label:'3 · Mensajes BOFU', col:'#ef4444', icon:'🎯'},
+  ];
+  const countryColors={Chile:'#6c3ee8',Uruguay:'#10b981',Argentina:'#4285f4'};
+
+  const objSections=OBJETIVOS_UI.map(o=>{
+    const obj=D.meta.objetivos[o.key];
+    const totalInv=sumCountries(obj,'inv');
+    const countryKpis=PAISES.map(c=>kpi(c,obj[c].inv,'money','',countryColors[c])).join('');
+    return `
+    ${sec(o.icon+' '+o.label)}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(155px,1fr))">
+      ${kpi('Inversión total',totalInv,'money','',o.col)}
+      ${countryKpis}
+    </div>
+    <div class="g3">
+      ${cc('m-'+slug(o.key)+'-alc','Alcance por país',MO[m],200)}
+      ${cc('m-'+slug(o.key)+'-inv','Inversión por país',MO[m],200)}
+      ${cc('m-'+slug(o.key)+'-res','Resultados por país',MO[m],200)}
+    </div>
+    <div class="g3">
+      ${cc('m-'+slug(o.key)+'-cpa','CPA por país ($)',MO[m],180)}
+      ${cc('m-'+slug(o.key)+'-ctr','CTR por país (%)',MO[m],180)}
+      ${cc('m-'+slug(o.key)+'-cpm','CPM por país ($)',MO[m],180)}
+    </div>
+    <div class="g1">
+      ${cc('m-'+slug(o.key)+'-trend','Inversión total del objetivo','Meses seleccionados',210)}
+    </div>`;
+  }).join('');
+
+  const invTotal = D.meta.resumen.invTotal.some(v=>v!=null) ? D.meta.resumen.invTotal : D.meta.resumen.invTotalMeta;
+
+  document.getElementById('p-meta').innerHTML=`
+    <div class="pg-dl-row">
+      <div class="pbadge ads">💰 ${MO[m]}${p!==null?' · vs '+MO[p]:' · primer mes con datos'}</div>
+      <button class="pg-dl-btn" onclick="doPrint()">📥 Descargar Meta Ads</button>
+    </div>
+
+    ${sec('📣 Resumen Meta')}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      ${kpi('Inversión total',invTotal,'money','ads')}
+      ${kpi('Alcance total',D.meta.resumen.alcTotal,'k','ads')}
+      ${kpi('Impresiones totales',D.meta.resumen.impTotal,'k','ads')}
+      ${kpi('Mensajes totales',D.meta.resumen.mensajesTotal,'k','ads')}
+    </div>
+
+    ${objSections}
+
+    <hr class="r-divider">
+
+    ${sec('🏥 Resumen del mes')}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+      ${kpi('Video consultas agendadas',D.meta.mes.videoConsultas,'k','acc')}
+      ${kpi('Cirugías agendadas',D.meta.mes.cirugiasAgendadas,'k','acc')}
+      ${kpi('Cirugías realizadas',D.meta.mes.cirugiasRealizadas,'k','acc')}
+    </div>
+
+    ${autoBlock('meta',C.ads)}`;
+
+  OBJETIVOS_UI.forEach(o=>{
+    const obj=D.meta.objetivos[o.key];
+    hBar('m-'+slug(o.key)+'-alc',PAISES,PAISES.map(c=>obj[c].alc[m]),v=>fK(v));
+    hBar('m-'+slug(o.key)+'-inv',PAISES,PAISES.map(c=>obj[c].inv[m]),v=>'$'+fK(v));
+    hBar('m-'+slug(o.key)+'-res',PAISES,PAISES.map(c=>obj[c].res[m]),v=>fK(v));
+    hBar('m-'+slug(o.key)+'-cpa',PAISES,PAISES.map(c=>obj[c].cpa[m]),v=>'$'+fN(v,2));
+    hBar('m-'+slug(o.key)+'-ctr',PAISES,PAISES.map(c=>obj[c].ctr[m]),v=>fN(v,2)+'%');
+    hBar('m-'+slug(o.key)+'-cpm',PAISES,PAISES.map(c=>obj[c].cpm[m]),v=>'$'+fN(v,2));
+    gBar('m-'+slug(o.key)+'-trend',[{label:'Inversión ($)',data:sumCountries(obj,'inv'),color:o.col}],v=>'$'+fK(v));
+  });
+}
+
+const RENDERS={resumen:rResumen,instagram:rInstagram,meta:rMeta};
+
+// ── GOOGLE SHEETS AUTO-FETCH ─────────────────────────────────────────────
+const SHEET_ID='1rnSp-QqgkbRzlaUcPiT6TWp7Fo4QEJdQ4jF-s0pvH5c';
+const csvUrl=gid=>`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+const GIDS={meta:'0',ig:'1203012154'};
+
+// CSV parser — soporta campos entre comillas (incluye multilínea)
+function parseCSV(txt){
+  const rows=[]; let row=[],cell='',inQ=false;
+  for(let i=0;i<txt.length;i++){
+    const c=txt[i];
+    if(inQ){if(c==='"'&&txt[i+1]==='"'){cell+='"';i++;}else if(c==='"'){inQ=false;}else{cell+=c;}}
+    else{
+      if(c==='"'){inQ=true;}
+      else if(c===','){row.push(cell);cell='';}
+      else if(c==='\r'&&txt[i+1]==='\n'){row.push(cell);rows.push(row);row=[];cell='';i++;}
+      else if(c==='\n'||c==='\r'){row.push(cell);rows.push(row);row=[];cell='';}
+      else{cell+=c;}
+    }
+  }
+  if(row.length||cell){row.push(cell);rows.push(row);}
+  return rows;
+}
+
+// Normaliza etiquetas: saca espacios invisibles (word-joiner) y espacios extra
+function normLbl(s){ return (s||'').replace(/[​-‍﻿⁠]/g,'').trim().toLowerCase(); }
+// Busca fila por etiqueta exacta en columna A (col 0)
+function rblH(rows,lbl){ const t=normLbl(lbl); return rows.find(r=>normLbl(r[0])===t)||[]; }
+
+const AC=[2,3,4,5,6,7,8,9,10,11,12,13]; // columnas Ene..Dic
+
+// Números con formato es-AR/es-CL: punto=miles, coma=decimales
+function numES(raw){
+  if(raw==null)return null;
+  let s=String(raw).replace(/[$%\s]/g,'').trim();
+  if(!s)return null;
+  if(/,\d{1,2}$/.test(s)) s=s.replace(/\./g,'').replace(',','.');
+  else s=s.replace(/\./g,'').replace(/,/g,'');
+  const n=parseFloat(s);
+  return isNaN(n)?null:n;
+}
+function numsES(row,cols){ return cols.map(c=>numES(row[c])); }
+function txtsES(row,cols){ return cols.map(c=>(row[c]||'').trim()); }
+
+// Extrae las 9 secciones de campaña (3 objetivos x 3 países) del sheet META ADS
+function extractMetaObjetivos(rows,cols){
+  const OBJ_FRAGS=[{frag:'TRÁFICO IG',key:'Tráfico IG'},{frag:'MENSAJES MOFU',key:'Mensajes MOFU'},{frag:'MENSAJES BOFU',key:'Mensajes BOFU'}];
+  const starts=[];
+  rows.forEach((row,idx)=>{
+    const lbl=(row[0]||'').toUpperCase();
+    for(const o of OBJ_FRAGS){
+      for(const pais of PAISES){
+        if(lbl.includes(o.frag)&&lbl.includes(pais.toUpperCase())){ starts.push({idx,objKey:o.key,pais}); }
+      }
+    }
+  });
+  const result={};
+  starts.forEach(({idx,objKey,pais},si)=>{
+    const end=si+1<starts.length?starts[si+1].idx:rows.length;
+    const seccion=rows.slice(idx+1,end).filter(r=>(r[0]||'').trim());
+    const sR=lbl=>seccion.find(r=>normLbl(r[0])===normLbl(lbl))||[];
+    if(!result[objKey])result[objKey]={};
+    result[objKey][pais]={
+      alc:numsES(sR('Alcance'),cols),
+      imp:numsES(sR('Impresiones'),cols),
+      res:numsES(sR('Resultados'),cols),
+      cpa:numsES(sR('CPA'),cols),
+      ctr:numsES(sR('CTR'),cols),
+      cpm:numsES(sR('CPM'),cols),
+      inv:numsES(sR('Inversión'),cols),
+    };
+  });
+  return result;
+}
+
+function detectMonths(){
+  const active=[];
+  for(let i=0;i<12;i++){
+    const hasMeta=D.meta.resumen.invTotal[i]!=null||D.meta.resumen.invTotalMeta[i]!=null;
+    const hasIG=D.ig.segFinal[i]!=null||D.ig.alcanceOrg[i]!=null;
+    const hasCamp=Object.values(D.meta.objetivos).some(obj=>PAISES.some(c=>obj[c].inv[i]!=null));
+    if(hasMeta||hasIG||hasCamp) active.push(i);
+  }
+  return active.length>0?active:[7];
+}
+
+function renderMonthPills(){
+  const active=detectMonths();
+  const div=document.getElementById('month-pills');
+  if(!div)return;
+  div.innerHTML=MO.map((mo,i)=>{
+    const hasData=active.includes(i);
+    const on=SEL.includes(i)?'on':'';
+    const nd=hasData?'':'no-data';
+    return `<button class="month-pill ${on} ${nd}" data-i="${i}" onclick="toggleMonth(${i})">${mo.slice(0,3)}</button>`;
+  }).join('');
+}
+
+function updateHeaderPeriod(){
+  const active=detectMonths();
+  const first=MO[active[0]], last=MO[active[active.length-1]];
+  const sub=document.getElementById('hdr-sub');
+  if(sub) sub.textContent=`Período: ${first}${first!==last?' – '+last:''} 2026 · Estadísticas por canal`;
+}
+
+function toggleMonth(i){
+  if(SEL.includes(i)){
+    if(SEL.length===1)return;
+    SEL=SEL.filter(x=>x!==i);
+  } else {
+    SEL=[...SEL,i].sort((a,b)=>a-b);
+  }
+  renderMonthPills();
+  destroyAll(); RENDERS[TAB]();
+}
+
+function setPreset(p){
+  const map={T1:[0,1,2],T2:[3,4,5],T3:[6,7,8],T4:[9,10,11],H1:[0,1,2,3,4,5],H2:[6,7,8,9,10,11],Todo:[0,1,2,3,4,5,6,7,8,9,10,11]};
+  SEL=map[p]||SEL;
+  renderMonthPills();
+  destroyAll(); RENDERS[TAB]();
+}
+
+function setTab(t){
+  TAB=t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+  document.querySelectorAll('.panel').forEach(pn=>pn.classList.toggle('active',pn.id==='p-'+t));
+  destroyAll(); RENDERS[t]();
+}
+
+function doRefresh(){ loadSheetData(); }
+
+async function loadSheetData(){
+  const el=document.getElementById('last-upd');
+  if(el)el.innerHTML='<span class="dot-live"></span> Actualizando…';
+
+  if(window.location.protocol==='file:'){
+    if(el)el.innerHTML='⚠️ Abrí el archivo desde un servidor local (ver consola)';
+    console.warn('Abrí este archivo desde un servidor local para conectar con Google Sheets:\ncd ~/EDG && python3 -m http.server 8080\nhttp://localhost:8080/dashboard_hair_density.html');
+    document.getElementById('loading-overlay').classList.add('hidden');
+    renderMonthPills(); updateHeaderPeriod();
+    destroyAll(); RENDERS[TAB]();
+    return;
+  }
+
+  try{
+    const results=await Promise.allSettled(
+      [GIDS.meta,GIDS.ig].map(id=>fetch(csvUrl(id)).then(r=>{if(!r.ok)throw new Error(r.status);return r.text();}))
+    );
+    const [metaT,igT]=results.map(r=>r.status==='fulfilled'?r.value:null);
+    const failCount=results.filter(r=>r.status!=='fulfilled').length;
+    if(failCount===2) throw new Error('No se pudo cargar el sheet');
+
+    const meta=metaT?parseCSV(metaT):null;
+    const ig=igT?parseCSV(igT):null;
+
+    if(meta){
+      D.meta.resumen.invTotalMeta =numsES(rblH(meta,'Inversion total meta ($)'),AC);
+      D.meta.resumen.invTotal     =numsES(rblH(meta,'Inversión total'),AC);
+      D.meta.resumen.alcTotal     =numsES(rblH(meta,'Alcance total'),AC);
+      D.meta.resumen.impTotal     =numsES(rblH(meta,'Impresiones totales'),AC);
+      D.meta.resumen.mensajesTotal=numsES(rblH(meta,'Mensajes totales'),AC);
+      D.meta.mes.videoConsultas   =numsES(rblH(meta,'Video consultas agendadas'),AC);
+      D.meta.mes.cirugiasAgendadas=numsES(rblH(meta,'Cirugías agendadas'),AC);
+      D.meta.mes.cirugiasRealizadas=numsES(rblH(meta,'Cirugías realizadas'),AC);
+      const objs=extractMetaObjetivos(meta,AC);
+      Object.keys(D.meta.objetivos).forEach(k=>{ if(objs[k]) Object.assign(D.meta.objetivos[k],objs[k]); });
+    }
+
+    if(ig){
+      D.ig.segInicio    =numsES(rblH(ig,'Seguidores al inicio del mes'),AC);
+      D.ig.segFinal      =numsES(rblH(ig,'Seguidores al final del mes'),AC);
+      D.ig.nuevosSeg     =numsES(rblH(ig,'Nuevos seguidores ★ (auto-calculado)'),AC);
+      D.ig.varSeg         =numsES(rblH(ig,'Variación % de seguidores (auto-calculado)'),AC);
+      D.ig.alcanceOrg    =numsES(rblH(ig,'Alcance orgánico total'),AC);
+      D.ig.impresiones   =numsES(rblH(ig,'Impresiones totales - Visualizaciones'),AC);
+      D.ig.frecuencia    =numsES(rblH(ig,'Frecuencia (impresiones / alcance — auto-calculado)'),AC);
+      D.ig.posts          =numsES(rblH(ig,'Posts publicados'),AC);
+      D.ig.guardados     =numsES(rblH(ig,'Guardados ⭐ (señal clave B2B técnico)'),AC);
+      D.ig.compartidos  =numsES(rblH(ig,'Compartidos'),AC);
+      D.ig.reproVideo   =numsES(rblH(ig,'Reproducciones de video'),AC);
+      D.ig.postDestacado=txtsES(rblH(ig,'Post destacado del mes (título/descripción)'),AC);
+      D.ig.likes           =numsES(rblH(ig,'Likes totales'),AC);
+      D.ig.comentarios  =numsES(rblH(ig,'Comentarios totales'),AC);
+      D.ig.engRate        =numsES(rblH(ig,'Engagement rate % ★ (auto-calculado)'),AC);
+      D.ig.clicsWeb       =numsES(rblH(ig,'Clics al sitio web (bio + stories + posts)'),AC);
+      D.ig.visitasPerfil=numsES(rblH(ig,'Visitas al perfil'),AC);
+      D.ig.intReels        =numsES(rblH(ig,'Interacciones en Reels'),AC);
+      D.ig.intFoto          =numsES(rblH(ig,'Interacciones en Foto'),AC);
+      D.ig.intStory         =numsES(rblH(ig,'Interacciones en Story'),AC);
+    }
+
+    const active=detectMonths();
+    SEL=SEL.filter(i=>active.includes(i));
+    if(SEL.length===0) SEL=[active[active.length-1]];
+    renderMonthPills();
+    updateHeaderPeriod();
+    destroyAll(); RENDERS[TAB]();
+
+    const now=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    if(el)el.innerHTML= failCount>0
+      ? `<span class="dot-live"></span> ⚠️ ${2-failCount}/2 sheets cargados · ${now}`
+      : `<span class="dot-live"></span> ${now}`;
+  }catch(e){
+    console.error('Sheet error:',e);
+    if(el)el.textContent='⚠️ Error al cargar — revisá tu conexión y hacé clic en 🔄 Actualizar';
+    renderMonthPills(); updateHeaderPeriod();
+    destroyAll(); RENDERS[TAB]();
+  }finally{
+    document.getElementById('loading-overlay').classList.add('hidden');
+  }
+}
+
+// INIT
+renderMonthPills();
+RENDERS[TAB]();
+loadSheetData();
+</script>
+</body>
+</html>
