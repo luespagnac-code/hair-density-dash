@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Hair Density — Dashboard mensual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14110d;
+    --surface:#1c1712;
+    --surface-alt:#241d16;
+    --border:#3a3025;
+    --text:#f2ece2;
+    --text-muted:#a89985;
+    --accent:#c1703e;       /* cobre / pigmento capilar */
+    --accent-soft:#c1703e33;
+    --teal:#6c9088;         /* posicionamiento / confianza clinica */
+    --teal-soft:#6c908833;
+    --gold:#c7a24a;         /* tofu / descubrimiento */
+    --gold-soft:#c7a24a33;
+    --danger:#b8563f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 80px;}
+  header.top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:16px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:20px;
+    margin-bottom:24px;
+  }
+  header.top h1{
+    font-family:'Newsreader', serif;
+    font-weight:500;
+    font-size:2rem;
+    margin:0 0 4px;
+    letter-spacing:0.2px;
+  }
+  header.top p{margin:0;color:var(--text-muted);font-size:0.92rem;}
+  .year-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.78rem;
+    color:var(--accent);
+    border:1px solid var(--accent-soft);
+    padding:4px 10px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+
+  /* KPI strip */
+  .kpi-strip{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-bottom:28px;
+  }
+  .kpi-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .kpi-card .k-label{font-size:0.72rem;color:var(--text-muted);text-transform:none;margin-bottom:6px;}
+  .kpi-card .k-value{font-family:'Newsreader',serif;font-size:1.55rem;font-weight:500;}
+  .kpi-card .k-delta{font-size:0.74rem;margin-top:2px;font-family:'IBM Plex Mono',monospace;}
+  .k-delta.up{color:#8fae86;}
+  .k-delta.down{color:var(--danger);}
+  .kpi-card canvas{width:100%;height:34px;margin-top:8px;display:block;}
+
+  /* month tabs */
+  .month-tabs{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:6px;
+    margin-bottom:24px;
+    scrollbar-width:thin;
+  }
+  .month-tabs button{
+    flex:0 0 auto;
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:0.82rem;
+    padding:7px 14px;
+    border-radius:100px;
+    cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .month-tabs button.filled{color:var(--text);}
+  .month-tabs button.filled::after{content:" ●"; color:var(--accent); font-size:0.6rem; vertical-align:middle;}
+  .month-tabs button:hover{border-color:var(--accent);}
+  .month-tabs button.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#1c1712;
+    font-weight:600;
+  }
+  .month-tabs button.active.filled::after{display:none;}
+
+  /* section groups */
+  .group{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    margin-bottom:16px;
+    overflow:hidden;
+  }
+  .group-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 18px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .group-head .g-title{
+    font-family:'Newsreader',serif;
+    font-size:1.08rem;
+    font-weight:500;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .g-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+  .g-dot.trafico{background:var(--accent);}
+  .g-dot.mofu{background:var(--teal);}
+  .g-dot.tofu{background:var(--gold);}
+  .g-dot.resumen{background:var(--text-muted);}
+  .g-dot.ig{background:var(--teal);}
+  .group-head .g-caret{color:var(--text-muted); transition:transform .15s;}
+  .group.open .g-caret{transform:rotate(180deg);}
+  .group-body{
+    display:none;
+    padding:4px 18px 18px;
+    border-top:1px solid var(--border);
+  }
+  .group.open .group-body{display:block;}
+
+  .field-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+    gap:12px;
+    margin-top:14px;
+  }
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:0.74rem;color:var(--text-muted);}
+  .field input{
+    background:var(--surface-alt);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:7px;
+    padding:8px 10px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.88rem;
+    width:100%;
+  }
+  .field input:focus{outline:none;border-color:var(--accent);}
+  .field.auto input{color:var(--text-muted); background:transparent; border-style:dashed;}
+  .field.text input{font-family:'IBM Plex Sans',sans-serif;}
+
+  footer.note{
+    color:var(--text-muted);
+    font-size:0.78rem;
+    text-align:center;
+    margin-top:20px;
+  }
+
+  @media (max-width:640px){
+    .kpi-strip{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Hair Density — Panel mensual</h1>
+      <p>Meta Ads + Instagram · seguimiento mes a mes</p>
+    </div>
+    <span class="year-badge">2026</span>
+  </header>
+
+  <div class="kpi-strip" id="kpiStrip"></div>
+
+  <nav class="month-tabs" id="monthTabs"></nav>
+
+  <main id="monthContent"></main>
+
+  <footer class="note">Los datos se guardan automáticamente en este documento. Los campos marcados con línea punteada se calculan solos.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const STORAGE_KEY = "hair-density-monthly-2026";
+
+// ---- field config, mirroring the client's tracking sheet ----
+const GROUPS = [
+  { id:"trafico", title:"Meta Ads · Tráfico IG", dot:"trafico", fields:[
+    {k:"tr_alcance",l:"Alcance"},
+    {k:"tr_impresiones",l:"Impresiones"},
+    {k:"tr_resultados",l:"Resultados"},
+    {k:"tr_cpa",l:"CPA",unit:"$"},
+    {k:"tr_ctr",l:"CTR",unit:"%"},
+    {k:"tr_cpm",l:"CPM",unit:"$"},
+    {k:"tr_inversion",l:"Inversión",unit:"$"},
+  ]},
+  { id:"mofu", title:"Meta Ads · Mensajes MOFU", dot:"mofu", fields:[
+    {k:"mo_resultados",l:"Resultados"},
+    {k:"mo_alcance",l:"Alcance"},
+    {k:"mo_impresiones",l:"Impresiones"},
+    {k:"mo_cpa",l:"CPA",unit:"$"},
+    {k:"mo_ctr",l:"CTR",unit:"%"},
+    {k:"mo_cpm",l:"CPM",unit:"$"},
+    {k:"mo_inversion",l:"Inversión",unit:"$"},
+  ]},
+  { id:"tofu", title:"Meta Ads · Mensajes TOFU", dot:"tofu", fields:[
+    {k:"to_resultados",l:"Resultados"},
+    {k:"to_alcance",l:"Alcance"},
+    {k:"to_impresiones",l:"Impresiones"},
+    {k:"to_cpa",l:"CPA",unit:"$"},
+    {k:"to_ctr",l:"CTR",unit:"%"},
+    {k:"to_cpm",l:"CPM",unit:"$"},
+    {k:"to_inversion",l:"Inversión",unit:"$"},
+  ]},
+  { id:"resumen_meta", title:"Resumen Meta Ads del mes", dot:"resumen", fields:[
+    {k:"rm_inversion_total",l:"Inversión total",unit:"$"},
+    {k:"rm_alcance_total",l:"Alcance total"},
+    {k:"rm_impresiones_total",l:"Impresiones totales"},
+    {k:"rm_mensajes_total",l:"Mensajes totales"},
+  ]},
+  { id:"resumen_negocio", title:"Resultados de negocio del mes", dot:"resumen", fields:[
+    {k:"rn_videoconsultas",l:"Videoconsultas agendadas"},
+    {k:"rn_cirugias_agendadas",l:"Cirugías agendadas"},
+    {k:"rn_cirugias_realizadas",l:"Cirugías realizadas"},
+  ]},
+  { id:"ig_audiencia", title:"Instagram · Audiencia", dot:"ig", fields:[
+    {k:"ig_seg_inicio",l:"Seguidores al inicio"},
+    {k:"ig_seg_final",l:"Seguidores al final"},
+    {k:"ig_seg_nuevos",l:"Nuevos seguidores",auto:(d)=> (num(d.ig_seg_final)-num(d.ig_seg_inicio))},
+    {k:"ig_seg_var",l:"Variación",unit:"%",auto:(d)=> num(d.ig_seg_inicio) ? ((num(d.ig_seg_final)-num(d.ig_seg_inicio))/num(d.ig_seg_inicio)*100) : 0},
+  ]},
+  { id:"ig_alcance", title:"Instagram · Alcance y visibilidad", dot:"ig", fields:[
+    {k:"ig_alcance_organico",l:"Alcance orgánico total"},
+    {k:"ig_impresiones_total",l:"Impresiones totales"},
+    {k:"ig_frecuencia",l:"Frecuencia",auto:(d)=> num(d.ig_alcance_organico) ? (num(d.ig_impresiones_total)/num(d.ig_alcance_organico)) : 0},
+  ]},
+  { id:"ig_contenido", title:"Instagram · Contenido técnico", dot:"ig", fields:[
+    {k:"ig_posts",l:"Posts publicados"},
+    {k:"ig_guardados",l:"Guardados"},
+    {k:"ig_compartidos",l:"Compartidos"},
+    {k:"ig_reproducciones",l:"Reproducciones de video"},
+    {k:"ig_post_destacado",l:"Post destacado del mes",text:true},
+  ]},
+  { id:"ig_engagement", title:"Instagram · Engagement", dot:"ig", fields:[
+    {k:"ig_likes",l:"Likes totales"},
+    {k:"ig_comentarios",l:"Comentarios totales"},
+    {k:"ig_eng_rate",l:"Engagement rate",unit:"%",auto:(d)=> num(d.ig_seg_final) ? ((num(d.ig_likes)+num(d.ig_comentarios))/num(d.ig_seg_final)*100) : 0},
+  ]},
+  { id:"ig_trafico_web", title:"Instagram · Tráfico al sitio web", dot:"ig", fields:[
+    {k:"ig_clics_web",l:"Clics al sitio web"},
+    {k:"ig_visitas_perfil",l:"Visitas al perfil"},
+  ]},
+  { id:"ig_formatos", title:"Instagram · Interacciones por formato", dot:"ig", fields:[
+    {k:"ig_int_reels",l:"Interacciones en Reels"},
+    {k:"ig_int_foto",l:"Interacciones en Foto"},
+    {k:"ig_int_story",l:"Interacciones en Story"},
+  ]},
+];
+
+function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+let data = {};       // { "Ene": {field:value,...}, ... }
+let activeMonth = MONTHS[0];
+let openGroups = new Set([GROUPS[0].id]);
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    data = res && res.value ? JSON.parse(res.value) : {};
+  }catch(e){ data = {}; }
+  MONTHS.forEach(m=>{ if(!data[m]) data[m] = {}; });
+}
+
+async function saveData(){
+  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(data), false); }
+  catch(e){ console.error("No se pudo guardar", e); }
+}
+
+function monthHasData(m){
+  const d = data[m] || {};
+  return Object.values(d).some(v => v !== undefined && v !== "" && v !== null);
+}
+
+function renderTabs(){
+  const nav = document.getElementById("monthTabs");
+  nav.innerHTML = "";
+  MONTHS.forEach(m=>{
+    const btn = document.createElement("button");
+    btn.textContent = m;
+    if(m === activeMonth) btn.classList.add("active");
+    if(monthHasData(m)) btn.classList.add("filled");
+    btn.onclick = ()=>{ activeMonth = m; render(); };
+    nav.appendChild(btn);
+  });
+}
+
+function renderGroups(){
+  const main = document.getElementById("monthContent");
+  main.innerHTML = "";
+  const monthData = data[activeMonth];
+
+  GROUPS.forEach(g=>{
+    const wrap = document.createElement("div");
+    wrap.className = "group" + (openGroups.has(g.id) ? " open" : "");
+
+    const head = document.createElement("div");
+    head.className = "group-head";
+    head.innerHTML = `<span class="g-title"><span class="g-dot ${g.dot}"></span>${g.title}</span><span class="g-caret">⌄</span>`;
+    head.onclick = ()=>{
+      if(openGroups.has(g.id)) openGroups.delete(g.id); else openGroups.add(g.id);
+      render();
+    };
+    wrap.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "group-body";
+    const grid = document.createElement("div");
+    grid.className = "field-grid";
+
+    g.fields.forEach(f=>{
+      const fieldWrap = document.createElement("div");
+      fieldWrap.className = "field" + (f.auto ? " auto" : "") + (f.text ? " text" : "");
+      const label = document.createElement("label");
+      label.textContent = f.l + (f.unit ? ` (${f.unit})` : "");
+      fieldWrap.appendChild(label);
+
+      const input = document.createElement("input");
+      if(f.auto){
+        input.disabled = true;
+        input.value = formatAuto(f.auto(monthData), f.unit);
+      } else {
+        input.type = f.text ? "text" : "number";
+        input.value = monthData[f.k] ?? "";
+        input.placeholder = "—";
+        input.addEventListener("input", (e)=>{
+          monthData[f.k] = e.target.value;
+          saveData();
+          refreshDependents(g);
+          renderTabs();
+          renderKpis();
+        });
+      }
+      fieldWrap.appendChild(input);
+      grid.appendChild(fieldWrap);
+    });
+
+    body.appendChild(grid);
+    wrap.appendChild(body);
+    main.appendChild(wrap);
+  });
+}
+
+function formatAuto(v, unit){
+  if(unit === "%") return v.toFixed(1) + "%";
+  return Number.isFinite(v) ? (Math.round(v*100)/100).toString() : "0";
+}
+
+function refreshDependents(g){
+  // re-render just auto fields within the same group without losing scroll/focus elsewhere
+  renderGroups();
+  // restore open state visually (renderGroups already respects openGroups)
+}
+
+function seriesFor(key){
+  return MONTHS.map(m => num((data[m]||{})[key]));
+}
+
+function drawSpark(canvas, values, color){
+  new Chart(canvas.getContext("2d"), {
+    type:"line",
+    data:{ labels: MONTHS, datasets:[{ data: values, borderColor: color, borderWidth:2, pointRadius:0, tension:0.35, fill:false }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+      scales:{ x:{display:false}, y:{display:false} },
+      elements:{ line:{ capBezierPoints:true } }
+    }
+  });
+}
+
+function renderKpis(){
+  const strip = document.getElementById("kpiStrip");
+  strip.innerHTML = "";
+
+  const kpis = [
+    { label:"Seguidores IG (fin de mes)", key:"ig_seg_final", color:"#c1703e" },
+    { label:"Inversión total Meta Ads", key:"rm_inversion_total", color:"#6c9088", prefix:"$" },
+    { label:"Cirugías realizadas", key:"rn_cirugias_realizadas", color:"#c7a24a" },
+    { label:"Engagement rate", key:null, color:"#c1703e", computed:true },
+  ];
+
+  kpis.forEach(kpi=>{
+    let values;
+    if(kpi.computed){
+      values = MONTHS.map(m=>{
+        const d = data[m]||{};
+        return num(d.ig_seg_final) ? ((num(d.ig_likes)+num(d.ig_comentarios))/num(d.ig_seg_final)*100) : 0;
+      });
+    } else {
+      values = seriesFor(kpi.key);
+    }
+    const filledIdx = [];
+    MONTHS.forEach((m,i)=>{ if(monthHasData(m)) filledIdx.push(i); });
+    const last = filledIdx.length ? values[filledIdx[filledIdx.length-1]] : 0;
+    const prev = filledIdx.length > 1 ? values[filledIdx[filledIdx.length-2]] : null;
+
+    const card = document.createElement("div");
+    card.className = "kpi-card";
+    let deltaHtml = "";
+    if(prev !== null && prev !== 0){
+      const pct = ((last-prev)/Math.abs(prev))*100;
+      const cls = pct >= 0 ? "up" : "down";
+      deltaHtml = `<div class="k-delta ${cls}">${pct>=0?"↑":"↓"} ${Math.abs(pct).toFixed(0)}% vs. mes anterior</div>`;
+    }
+    const displayVal = kpi.computed ? last.toFixed(1)+"%" : (kpi.prefix||"") + Math.round(last).toLocaleString("es-AR");
+    card.innerHTML = `<div class="k-label">${kpi.label}</div><div class="k-value">${displayVal}</div>${deltaHtml}<canvas></canvas>`;
+    strip.appendChild(card);
+    drawSpark(card.querySelector("canvas"), values, kpi.color);
+  });
+}
+
+function render(){
+  renderTabs();
+  renderGroups();
+  renderKpis();
+}
+
+(async function init(){
+  await loadData();
+  render();
+})();
+</script>
+</body>
+</html>
