@@ -513,44 +513,42 @@ function rInstagram(){
 }
 
 // ── TAB: META ADS ────────────────────────────────────────────────────────
-function sumCountries(obj,field){
-  return MO.map((_,i)=>{
-    const vals=PAISES.map(c=>obj[c][field][i]).filter(v=>v!=null);
-    return vals.length?vals.reduce((a,b)=>a+b,0):null;
-  });
-}
-
 function rMeta(){
   const m=lastM(), p=prevM();
-  const OBJETIVOS_UI=[
-    {key:'Tráfico IG',    label:'1 · Tráfico IG',    col:'#6c3ee8', icon:'🚗'},
-    {key:'Mensajes MOFU', label:'2 · Mensajes MOFU', col:C.ads,     icon:'💬'},
-    {key:'Mensajes BOFU', label:'3 · Mensajes BOFU', col:'#ef4444', icon:'🎯'},
-  ];
   const countryColors={Chile:'#6c3ee8',Uruguay:'#10b981',Argentina:'#4285f4'};
+  const OBJETIVOS_UI=[
+    {key:'Tráfico IG',    label:'Tráfico IG',    icon:'🚗'},
+    {key:'Mensajes MOFU', label:'Mensajes MOFU', icon:'💬'},
+    {key:'Mensajes BOFU', label:'Mensajes BOFU', icon:'🎯'},
+  ];
+  // Cada país es una campaña propia y distinta — no se suman ni se comparan entre sí.
+  const CAMPS=OBJETIVOS_UI.flatMap(o=>PAISES.map(pais=>({
+    objKey:o.key, pais, col:countryColors[pais],
+    label:`${o.icon} ${o.label} · ${pais}`, id:slug(o.key)+'-'+slug(pais),
+  })));
 
-  const objSections=OBJETIVOS_UI.map(o=>{
-    const obj=D.meta.objetivos[o.key];
-    const totalInv=sumCountries(obj,'inv');
-    const countryKpis=PAISES.map(c=>kpi(c,obj[c].inv,'money','',countryColors[c])).join('');
+  const campSections=CAMPS.map(c=>{
+    const d=D.meta.objetivos[c.objKey][c.pais];
     return `
-    ${sec(o.icon+' '+o.label)}
-    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(155px,1fr))">
-      ${kpi('Inversión total',totalInv,'money','',o.col)}
-      ${countryKpis}
+    ${sec(c.label)}
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr))">
+      ${kpi('Inversión',d.inv,'money','',c.col)}
+      ${kpi('Alcance',d.alc,'k','',c.col)}
+      ${kpi('Impresiones',d.imp,'k','',c.col)}
+      ${kpi('Resultados',d.res,'k','',c.col)}
+      ${kpi('CPA',d.cpa,'money','',c.col)}
+      ${kpi('CTR',d.ctr,'pct','',c.col)}
+      ${kpi('CPM',d.cpm,'money','',c.col)}
     </div>
     <div class="g3">
-      ${cc('m-'+slug(o.key)+'-alc','Alcance por país',MO[m],200)}
-      ${cc('m-'+slug(o.key)+'-inv','Inversión por país',MO[m],200)}
-      ${cc('m-'+slug(o.key)+'-res','Resultados por país',MO[m],200)}
+      ${cc('m-'+c.id+'-inv','Inversión ($)','Meses seleccionados',190)}
+      ${cc('m-'+c.id+'-alc','Alcance','Meses seleccionados',190)}
+      ${cc('m-'+c.id+'-imp','Impresiones','Meses seleccionados',190)}
     </div>
     <div class="g3">
-      ${cc('m-'+slug(o.key)+'-cpa','CPA por país ($)',MO[m],180)}
-      ${cc('m-'+slug(o.key)+'-ctr','CTR por país (%)',MO[m],180)}
-      ${cc('m-'+slug(o.key)+'-cpm','CPM por país ($)',MO[m],180)}
-    </div>
-    <div class="g1">
-      ${cc('m-'+slug(o.key)+'-trend','Inversión total del objetivo','Meses seleccionados',210)}
+      ${cc('m-'+c.id+'-cpa','CPA ($)','Meses seleccionados',170)}
+      ${cc('m-'+c.id+'-ctr','CTR (%)','Meses seleccionados',170)}
+      ${cc('m-'+c.id+'-cpm','CPM ($)','Meses seleccionados',170)}
     </div>`;
   }).join('');
 
@@ -562,7 +560,7 @@ function rMeta(){
       <button class="pg-dl-btn" onclick="doPrint()">📥 Descargar Meta Ads</button>
     </div>
 
-    ${sec('📣 Resumen Meta')}
+    ${sec('📣 Resumen Meta (todas las campañas)')}
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
       ${kpi('Inversión total',invTotal,'money','ads')}
       ${kpi('Alcance total',D.meta.resumen.alcTotal,'k','ads')}
@@ -570,7 +568,7 @@ function rMeta(){
       ${kpi('Mensajes totales',D.meta.resumen.mensajesTotal,'k','ads')}
     </div>
 
-    ${objSections}
+    ${campSections}
 
     <hr class="r-divider">
 
@@ -583,15 +581,14 @@ function rMeta(){
 
     ${autoBlock('meta',C.ads)}`;
 
-  OBJETIVOS_UI.forEach(o=>{
-    const obj=D.meta.objetivos[o.key];
-    hBar('m-'+slug(o.key)+'-alc',PAISES,PAISES.map(c=>obj[c].alc[m]),v=>fK(v));
-    hBar('m-'+slug(o.key)+'-inv',PAISES,PAISES.map(c=>obj[c].inv[m]),v=>'$'+fK(v));
-    hBar('m-'+slug(o.key)+'-res',PAISES,PAISES.map(c=>obj[c].res[m]),v=>fK(v));
-    hBar('m-'+slug(o.key)+'-cpa',PAISES,PAISES.map(c=>obj[c].cpa[m]),v=>'$'+fN(v,2));
-    hBar('m-'+slug(o.key)+'-ctr',PAISES,PAISES.map(c=>obj[c].ctr[m]),v=>fN(v,2)+'%');
-    hBar('m-'+slug(o.key)+'-cpm',PAISES,PAISES.map(c=>obj[c].cpm[m]),v=>'$'+fN(v,2));
-    gBar('m-'+slug(o.key)+'-trend',[{label:'Inversión ($)',data:sumCountries(obj,'inv'),color:o.col}],v=>'$'+fK(v));
+  CAMPS.forEach(c=>{
+    const d=D.meta.objetivos[c.objKey][c.pais];
+    gBar('m-'+c.id+'-inv',[{label:'Inversión ($)',data:d.inv,color:c.col}],v=>'$'+fK(v));
+    gBar('m-'+c.id+'-alc',[{label:'Alcance',data:d.alc,color:c.col}]);
+    gBar('m-'+c.id+'-imp',[{label:'Impresiones',data:d.imp,color:c.col}]);
+    gBar('m-'+c.id+'-cpa',[{label:'CPA ($)',data:d.cpa,color:c.col}],v=>'$'+fN(v,2));
+    gBar('m-'+c.id+'-ctr',[{label:'CTR (%)',data:d.ctr,color:c.col}],v=>fN(v,2)+'%');
+    gBar('m-'+c.id+'-cpm',[{label:'CPM ($)',data:d.cpm,color:c.col}],v=>'$'+fN(v,2));
   });
 }
 
