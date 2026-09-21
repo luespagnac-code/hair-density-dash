@@ -99,6 +99,13 @@ body{font-family:Inter,-apple-system,'Segoe UI',Roboto,sans-serif;background:var
 .block-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px}
 .block-text{font-size:13px;color:var(--text);line-height:1.85;white-space:pre-line}
 
+/* POST DESTACADO */
+.post-card{margin-bottom:var(--gap)}
+.post-text{font-size:13px;line-height:1.6;margin:8px 0 12px}
+.post-text.muted{color:var(--muted);margin-bottom:0}
+.post-link{display:inline-block;margin-top:10px;padding:7px 16px;border-radius:20px;background:var(--ig);color:#fff;font-size:12px;font-weight:700;text-decoration:none}
+.post-link:hover{opacity:.88}
+
 /* DOWNLOAD PER PANEL */
 .pg-dl-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:20px}
 .pg-dl-row .pbadge{margin-bottom:0}
@@ -348,21 +355,6 @@ function genAutoInsights(tab){
     }
   }
 
-  else if(tab==='instagram'){
-    if(p!==null){
-      [chgLine('Alcance orgánico',D.ig.alcanceOrg[m],D.ig.alcanceOrg[p],fK,p),
-       chgLine('Nuevos seguidores',D.ig.nuevosSeg[m],D.ig.nuevosSeg[p],v=>fN(v,0),p),
-       chgLine('Engagement rate',D.ig.engRate[m],D.ig.engRate[p],v=>fN(v,2)+'%',p)]
-        .filter(Boolean).forEach(l=>lines.push(l));
-    } else {
-      if(D.ig.alcanceOrg[m]!=null) lines.push(`📡 Alcance orgánico: ${fK(D.ig.alcanceOrg[m])}`);
-      if(D.ig.nuevosSeg[m]!=null)  lines.push(`👥 Nuevos seguidores: ${fN(D.ig.nuevosSeg[m],0)}`);
-    }
-    if(D.ig.postDestacado[m]) lines.push(`🏆 Post destacado: "${D.ig.postDestacado[m]}"`);
-    const fmts=[{lbl:'Reels',d:D.ig.intReels[m]},{lbl:'Foto',d:D.ig.intFoto[m]},{lbl:'Story',d:D.ig.intStory[m]}].filter(f=>f.d!=null&&f.d>0);
-    if(fmts.length>0){ const best=fmts.reduce((a,b)=>b.d>a.d?b:a); lines.push(`🎞️ Formato top: ${best.lbl} (${fK(best.d)} interacciones)`); }
-  }
-
   else if(tab==='meta'){
     if(D.meta.resumen.invTotal[m]!=null) lines.push(`💰 Inversión total Meta Ads: ${f$(D.meta.resumen.invTotal[m])}`);
     Object.entries(D.meta.objetivos).forEach(([key,obj])=>{
@@ -387,6 +379,102 @@ function autoBlock(tab,color){
       <div class="block-text">${insight}</div>
     </div>
   </div>`;
+}
+
+// ── INSTAGRAM: POST DESTACADO Y MINI ANÁLISIS ────────────────────────────
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// La celda puede traer solo el link o "título + link"; se limpia el tracking de Instagram.
+function parsePost(raw){
+  const t=(raw||'').trim(); if(!t) return null;
+  const found=t.match(/https?:\/\/\S+/);
+  let url='';
+  if(found){
+    try{
+      const u=new URL(found[0]);
+      if(/(^|\.)instagram\.com$/.test(u.hostname)){ u.search=''; u.hash=''; }
+      url=u.href;
+    }catch(e){}
+  }
+  const text=t.replace(found?found[0]:'','').replace(/[\s\-–—:]+$/,'').trim();
+  return {text,url};
+}
+
+function igAnalysis(m,p){
+  const v=(k,i=m)=>i==null?null:D.ig[k][i];
+  const seg=v('segFinal'), nuevos=v('nuevosSeg'), varSeg=v('varSeg'), alc=v('alcanceOrg'), imp=v('impresiones'),
+        posts=v('posts'), guard=v('guardados'), comp=v('compartidos'), likes=v('likes'), coment=v('comentarios'),
+        visitas=v('visitasPerfil'), clics=v('clicsWeb');
+  const er=v('engRate') ?? (alc>0&&likes!=null&&coment!=null ? (likes+coment)/alc*100 : null);
+
+  const fmts=[['Reels',v('intReels')],['Foto',v('intFoto')],['Story',v('intStory')]].filter(f=>f[1]>0);
+  const fmtTot=fmts.reduce((s,f)=>s+f[1],0);
+  const bestFmt=fmts.length?fmts.reduce((a,b)=>b[1]>a[1]?b:a):null;
+
+  const resumen=[];
+  if(seg!=null) resumen.push(`📱 Cerró ${MO[m]} con ${fN(seg)} seguidores${nuevos!=null?` (+${fN(nuevos)} nuevos${varSeg!=null?`, ${fN(varSeg,1)}%`:''})`:''}.`);
+  if(alc!=null) resumen.push(`📡 Alcance orgánico de ${fN(alc)} cuentas${imp!=null?` y ${fN(imp)} visualizaciones`:''}${seg>0?` — ${fN(alc/seg,0)} veces su base de seguidores`:''}.`);
+  if(likes!=null||coment!=null) resumen.push(`❤️ ${fN(likes)} likes y ${fN(coment)} comentarios${er!=null?` · engagement ${fN(er,2)}%`:''}.`);
+  if(guard!=null||comp!=null) resumen.push(`💾 ${fN(guard)} guardados · 🔁 ${fN(comp)} compartidos.`);
+  if(posts!=null) resumen.push(`🎬 ${fN(posts)} posts publicados.`);
+  if(visitas!=null) resumen.push(`🌐 ${fN(visitas)} visitas al perfil${clics!=null&&visitas>0?` y ${fN(clics)} clics al sitio (${fN(clics/visitas*100,2)}% de las visitas)`:''}.`);
+  if(bestFmt) resumen.push(`🎞️ Formato con más interacciones: ${bestFmt[0]} (${fN(bestFmt[1]/fmtTot*100,0)}% del total).`);
+
+  const comparativa=[];
+  if(p!==null){
+    [['Seguidores','segFinal',fN],['Nuevos seguidores','nuevosSeg',fN],['Alcance orgánico','alcanceOrg',fK],
+     ['Visualizaciones','impresiones',fK],['Posts publicados','posts',fN],['Guardados','guardados',fN],
+     ['Compartidos','compartidos',fN],['Likes','likes',fN],['Comentarios','comentarios',fN],
+     ['Visitas al perfil','visitasPerfil',fK],['Clics al sitio','clicsWeb',fN]]
+      .forEach(([lbl,k,f])=>{ const l=chgLine(lbl,v(k),v(k,p),f,p); if(l) comparativa.push(l); });
+    const lEr=chgLine('Engagement rate',er,v('engRate',p),n=>fN(n,2)+'%',p); if(lEr) comparativa.push(lEr);
+  }
+
+  const mejoras=[];
+  if(er!=null&&er<1) mejoras.push(`❤️ Engagement de ${fN(er,2)}%: bajo. Sumá llamados a comentar (preguntas, "escribinos X") y piezas que inviten a guardar y compartir.`);
+  if(alc>0&&seg>0&&alc/seg>=20) mejoras.push(`👥 El alcance equivale a ${fN(alc/seg,0)} veces tus seguidores: casi todo el público que te ve no te sigue. Reforzá el CTA de "seguinos" y ordená la bio para convertir visitas en seguidores.`);
+  if(visitas>0&&clics!=null&&clics/visitas<0.01) mejoras.push(`🌐 Solo el ${fN(clics/visitas*100,2)}% de las visitas al perfil hace clic al sitio: revisá el link de la bio (un destino claro, con CTA para agendar) y usá el sticker de link en stories.`);
+  if(likes>0&&guard!=null&&guard/likes<0.15) mejoras.push(`💾 Los guardados son el ${fN(guard/likes*100,0)}% de los likes: sumá contenido útil para guardar (checklists, preguntas frecuentes, cuidados pre y post).`);
+  if(posts!=null&&posts<8) mejoras.push(`🎬 ${fN(posts)} posts en el mes: considerá aumentar la frecuencia de publicación para sostener el alcance.`);
+  if(bestFmt&&bestFmt[0]==='Reels'&&bestFmt[1]/fmtTot>=0.5) mejoras.push(`🎞️ Reels concentra el ${fN(bestFmt[1]/fmtTot*100,0)}% de las interacciones: priorizá ese formato y repetí los temas que mejor funcionaron.`);
+  if(p!==null){
+    [['El alcance','alcanceOrg',alc],['El engagement','engRate',er],['Los nuevos seguidores','nuevosSeg',nuevos]].forEach(([lbl,k,cur])=>{
+      const c=chg(cur,v(k,p));
+      if(c!==null&&c<-10) mejoras.push(`📉 ${lbl} cayó ${fN(Math.abs(c),1)}% vs ${MO[p]}: revisá qué formatos y horarios rindieron mejor y repetilos.`);
+    });
+  }
+  const faltan=[['Reproducciones de video',v('reproVideo')],['Frecuencia',v('frecuencia')]].filter(f=>f[1]==null).map(f=>f[0]);
+  if(faltan.length) mejoras.push(`📊 Falta cargar en el sheet: ${faltan.join(' y ')}.`);
+  if(mejoras.length===0&&resumen.length>0) mejoras.push('✅ No se detectan puntos críticos con los datos cargados.');
+
+  return {resumen,comparativa,mejoras};
+}
+
+function igAnalysisBlock(m,p){
+  const {resumen,comparativa,mejoras}=igAnalysis(m,p);
+  const post=parsePost(D.ig.postDestacado[m]);
+  const postHtml=`
+    <div class="cc post-card">
+      <div class="cc-title">🏆 Post destacado de ${MO[m]}</div>
+      ${post
+        ? `${post.text?`<div class="post-text">${esc(post.text)}</div>`:''}
+           ${post.url?`<a class="post-link" href="${esc(post.url)}" target="_blank" rel="noopener noreferrer">Ver publicación en Instagram ↗</a>`:''}`
+        : `<div class="post-text muted">Todavía no hay un post destacado cargado en el sheet (fila "Post destacado del mes").</div>`}
+    </div>`;
+  const box=(label,color,lines,empty)=>`
+    <div class="auto-insight" style="border-left-color:${color}">
+      <div class="block-label" style="color:${color}">${label}</div>
+      <div class="block-text">${esc(lines.length?lines.join('\n'):empty)}</div>
+    </div>`;
+  const emptyComp=p===null?'Es el primer mes del año: no hay mes anterior para comparar.':`Todavía no hay datos de ${MO[p]} en el sheet para comparar. Aparece solo cuando lo cargues.`;
+  return `
+    ${sec('🔎 Post destacado y mini análisis · '+MO[m])}
+    ${postHtml}
+    <div class="g3">
+      ${box('📊 Resumen del mes',C.ig,resumen,'Cargá los datos del mes para ver el análisis.')}
+      ${box(p!==null?'📈 Comparativa vs '+MO[p]:'📈 Comparativa',C.live,comparativa,emptyComp)}
+      ${box('💡 Puntos de mejora',C.ads,mejoras,'Cargá los datos del mes para ver el análisis.')}
+    </div>`;
 }
 
 // ── TAB: RESUMEN ─────────────────────────────────────────────────────────
@@ -447,13 +535,6 @@ function rResumen(){
 // ── TAB: INSTAGRAM ───────────────────────────────────────────────────────
 function rInstagram(){
   const m=lastM(), p=prevM();
-  const postDest=D.ig.postDestacado[m];
-  const postDestHtml=postDest?`
-    <div class="cc" style="margin-top:8px">
-      <div class="cc-title">🏆 Post destacado del mes</div>
-      <div style="padding:6px 4px 0;font-size:13px;line-height:1.6">${postDest}</div>
-    </div>`:'';
-
   document.getElementById('p-instagram').innerHTML=`
     <div class="pg-dl-row">
       <div class="pbadge ig">📱 ${MO[m]}${p!==null?' · vs '+MO[p]:' · primer mes con datos'}</div>
@@ -485,8 +566,6 @@ function rInstagram(){
       ${kpi('Reproducciones de video',D.ig.reproVideo,'k','ig')}
     </div>
     <div class="g1" style="margin-top:8px">${cc('ig-cont-bar','Guardados, compartidos y reproducciones','Meses seleccionados',230)}</div>
-    ${postDestHtml}
-
     ${sec('🤝 Engagement y confianza')}
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
       ${kpi('Likes totales',D.ig.likes,'k','ig')}
@@ -505,7 +584,7 @@ function rInstagram(){
     ${sec('🎞️ Evaluación por formatos')}
     <div class="g1">${cc('ig-fmt-donut','Interacciones por formato','Reels, Foto y Story · '+MO[m],260)}</div>
 
-    ${autoBlock('instagram',C.ig)}`;
+    ${igAnalysisBlock(m,p)}`;
 
   gBar('ig-seg-trend',[{label:'Seguidores',data:D.ig.segFinal,color:C.ig}]);
   gBar('ig-alc-imp',[{label:'Alcance orgánico',data:D.ig.alcanceOrg,color:C.ig},{label:'Impresiones',data:D.ig.impresiones,color:'#f472b6'}]);
