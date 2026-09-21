@@ -83,8 +83,9 @@ body{font-family:Inter,-apple-system,'Segoe UI',Roboto,sans-serif;background:var
 
 /* GRIDS */
 .g1{display:grid;grid-template-columns:1fr;gap:var(--gap);margin-bottom:var(--gap)}
-.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap);margin-bottom:var(--gap)}
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-bottom:var(--gap)}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap);margin-bottom:var(--gap)}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap);margin-bottom:var(--gap)}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap);margin-bottom:var(--gap)}
 
 /* CHART CARD */
 .cc{background:var(--card);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow)}
@@ -114,7 +115,8 @@ body{font-family:Inter,-apple-system,'Segoe UI',Roboto,sans-serif;background:var
 body.print-all .panel{display:block!important;position:relative}
 body.print-all .panel+.panel{margin-top:0}
 
-@media(max-width:900px){.g2,.g3{grid-template-columns:1fr}.header,.filter-bar,.tabs{padding-left:14px;padding-right:14px}.main{padding:16px}}
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}.header,.filter-bar,.tabs{padding-left:14px;padding-right:14px}.main{padding:16px}}
 @media print{
   .filter-bar,.tabs,.pg-dl-btn,.header-right{display:none!important}
   .panel{display:none!important}
@@ -209,7 +211,8 @@ const D = {
 };
 
 // ── STATE ────────────────────────────────────────────────────────────────
-let SEL=[7];    // mes activo por defecto (se recalcula tras cargar el sheet)
+let SEL=[7];    // se reemplaza por todos los meses con datos en la primera carga del sheet
+let selInit=false;
 let TAB='resumen';
 const CHS={};
 
@@ -515,42 +518,30 @@ function rInstagram(){
 // ── TAB: META ADS ────────────────────────────────────────────────────────
 function rMeta(){
   const m=lastM(), p=prevM();
-  const countryColors={Chile:'#6c3ee8',Uruguay:'#10b981',Argentina:'#4285f4'};
   const OBJETIVOS_UI=[
-    {key:'Tráfico IG',    label:'Tráfico IG',    icon:'🚗'},
-    {key:'Mensajes MOFU', label:'Mensajes MOFU', icon:'💬'},
-    {key:'Mensajes BOFU', label:'Mensajes BOFU', icon:'🎯'},
+    {key:'Tráfico IG',    label:'Tráfico IG',    col:'#6c3ee8'},
+    {key:'Mensajes MOFU', label:'Mensajes MOFU', col:'#f59e0b'},
+    {key:'Mensajes BOFU', label:'Mensajes BOFU', col:'#ef4444'},
   ];
   // Cada país es una campaña propia y distinta — no se suman ni se comparan entre sí.
   const CAMPS=OBJETIVOS_UI.flatMap(o=>PAISES.map(pais=>({
-    objKey:o.key, pais, col:countryColors[pais],
-    label:`${o.icon} ${o.label} · ${pais}`, id:slug(o.key)+'-'+slug(pais),
+    objKey:o.key, pais, col:o.col,
+    label:`${o.label} - ${pais}`, id:slug(o.key)+'-'+slug(pais),
   })));
 
-  const campSections=CAMPS.map(c=>{
-    const d=D.meta.objetivos[c.objKey][c.pais];
-    return `
+  const campSections=CAMPS.map(c=>`
     ${sec(c.label)}
-    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr))">
-      ${kpi('Inversión',d.inv,'money','',c.col)}
-      ${kpi('Alcance',d.alc,'k','',c.col)}
-      ${kpi('Impresiones',d.imp,'k','',c.col)}
-      ${kpi('Resultados',d.res,'k','',c.col)}
-      ${kpi('CPA',d.cpa,'money','',c.col)}
-      ${kpi('CTR',d.ctr,'pct','',c.col)}
-      ${kpi('CPM',d.cpm,'money','',c.col)}
-    </div>
     <div class="g3">
       ${cc('m-'+c.id+'-inv','Inversión ($)','Meses seleccionados',190)}
-      ${cc('m-'+c.id+'-alc','Alcance','Meses seleccionados',190)}
-      ${cc('m-'+c.id+'-imp','Impresiones','Meses seleccionados',190)}
+      ${cc('m-'+c.id+'-alc','Alcance','Personas únicas impactadas',190)}
+      ${cc('m-'+c.id+'-imp','Impresiones','Total de impresiones',190)}
     </div>
-    <div class="g3">
-      ${cc('m-'+c.id+'-cpa','CPA ($)','Meses seleccionados',170)}
-      ${cc('m-'+c.id+'-ctr','CTR (%)','Meses seleccionados',170)}
-      ${cc('m-'+c.id+'-cpm','CPM ($)','Meses seleccionados',170)}
-    </div>`;
-  }).join('');
+    <div class="g4">
+      ${cc('m-'+c.id+'-res','Resultados','Mensajes / clics obtenidos',170)}
+      ${cc('m-'+c.id+'-cpm','CPM','Costo por mil impresiones ($)',170)}
+      ${cc('m-'+c.id+'-cpa','CPA','Costo por acción ($)',170)}
+      ${cc('m-'+c.id+'-ctr','CTR','Click-through rate (%)',170)}
+    </div>`).join('');
 
   const invTotal = D.meta.resumen.invTotal.some(v=>v!=null) ? D.meta.resumen.invTotal : D.meta.resumen.invTotalMeta;
 
@@ -586,9 +577,10 @@ function rMeta(){
     gBar('m-'+c.id+'-inv',[{label:'Inversión ($)',data:d.inv,color:c.col}],v=>'$'+fK(v));
     gBar('m-'+c.id+'-alc',[{label:'Alcance',data:d.alc,color:c.col}]);
     gBar('m-'+c.id+'-imp',[{label:'Impresiones',data:d.imp,color:c.col}]);
+    gBar('m-'+c.id+'-res',[{label:'Resultados',data:d.res,color:c.col}]);
+    gBar('m-'+c.id+'-cpm',[{label:'CPM ($)',data:d.cpm,color:c.col}],v=>'$'+fN(v,2));
     gBar('m-'+c.id+'-cpa',[{label:'CPA ($)',data:d.cpa,color:c.col}],v=>'$'+fN(v,2));
     gBar('m-'+c.id+'-ctr',[{label:'CTR (%)',data:d.ctr,color:c.col}],v=>fN(v,2)+'%');
-    gBar('m-'+c.id+'-cpm',[{label:'CPM ($)',data:d.cpm,color:c.col}],v=>'$'+fN(v,2));
   });
 }
 
@@ -786,8 +778,8 @@ async function loadSheetData(){
     }
 
     const active=detectMonths();
-    SEL=SEL.filter(i=>active.includes(i));
-    if(SEL.length===0) SEL=[active[active.length-1]];
+    if(!selInit){ SEL=[...active]; selInit=true; }
+    else { SEL=SEL.filter(i=>active.includes(i)); if(SEL.length===0) SEL=[active[active.length-1]]; }
     renderMonthPills();
     updateHeaderPeriod();
     destroyAll(); RENDERS[TAB]();
